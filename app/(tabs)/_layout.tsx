@@ -1,33 +1,53 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
-
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Ionicons } from "@expo/vector-icons";
+import { Tabs } from "expo-router";
+import React from "react";
+import { Platform } from "react-native";
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
+        tabBarActiveTintColor: "#007AFF", // Màu xanh khi active
+        tabBarInactiveTintColor: "#999", // Màu xám khi inactive
+
+        // --- CẤU HÌNH MỚI TẠI ĐÂY ---
+        // 1. Chuyển layout sang ngang (Icon bên cạnh Text)
+        tabBarLabelPosition: "beside-icon",
+
+        // 2. Chỉnh style cho thanh Tab (Màu trắng, bỏ màu đen)
+        tabBarStyle: {
+          backgroundColor: "#fff",
+          borderTopWidth: 1,
+          borderTopColor: "#f0f0f0",
+          height: Platform.OS === "ios" ? 88 : 60, // Tăng chiều cao một chút cho thoáng
+          paddingBottom: Platform.OS === "ios" ? 28 : 8, // Căn chỉnh padding dưới
+          paddingTop: 8,
+        },
+        tabBarLabelStyle: {
+          fontSize: 14,
+          fontWeight: "600",
+          marginLeft: 4, // Khoảng cách giữa icon và text
+        },
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: "Sự kiện",
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="calendar" size={24} color={color} />
+          ),
         }}
       />
+
       <Tabs.Screen
-        name="explore"
+        name="profile"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: "Tài khoản",
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="person" size={24} color={color} />
+          ),
         }}
       />
     </Tabs>

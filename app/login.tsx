@@ -1,45 +1,68 @@
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
 import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
-} from 'react-native';
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+// 1. Import AsyncStorage
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const handleLogin = () => {
-    // 1. Validate đơn giản
-    if (!email || !password) {
-      Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ thông tin!');
+  // Chuyển hàm handleLogin thành async để dùng await
+  const handleLogin = async () => {
+    setErrorMessage("");
+
+    if (!email.trim() || !password.trim()) {
+      setErrorMessage("Vui lòng điền đầy đủ thông tin");
       return;
     }
 
-    // 2. Giả lập logic đăng nhập thành công
-    // Sau này bạn sẽ thay thế bằng API hoặc Firebase Auth
-    console.log('Login với:', email, password);
+    if (email === "huydo@gmail.com" && password === "Aa123456") {
+      try {
+        // 2. LƯU TRẠNG THÁI ĐĂNG NHẬP VÀO BỘ NHỚ
+        await AsyncStorage.setItem("userToken", "dummy-token");
+        // (Lưu thêm info user nếu cần)
+        await AsyncStorage.setItem("userInfo", JSON.stringify({ email }));
 
-    // 3. Điều hướng vào màn hình chính (Tabs)
-    // Dùng 'replace' để người dùng không bấm Back quay lại màn hình Login được
-    router.replace('/(tabs)'); 
+        console.log("Login Success & Saved to Storage");
+        router.replace("/(tabs)");
+      } catch (error) {
+        console.error("Lỗi lưu data", error);
+      }
+    } else {
+      setErrorMessage("Vui lòng kiểm tra lại email/mật khẩu của bạn");
+    }
   };
 
+  // ... (Phần UI giữ nguyên như cũ, không thay đổi)
   return (
-    <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
+      {/* ... CODE GIAO DIỆN CŨ GIỮ NGUYÊN ... */}
+      {/* Tôi xin phép rút gọn đoạn này để tập trung vào logic, bạn giữ nguyên UI cũ nhé */}
       <View style={styles.innerContainer}>
-        <Text style={styles.title}>Welcome Back!</Text>
-        <Text style={styles.subtitle}>Đăng nhập để tiếp tục</Text>
+        <Image
+          source={require("../assets/images/shineticket.png")}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <Text style={styles.title}>Welcome to ShineTicket </Text>
+        <Text style={styles.subtitle}>Organizer Centre</Text>
 
         {/* Input Email */}
         <View style={styles.inputContainer}>
@@ -49,7 +72,10 @@ export default function LoginScreen() {
             placeholder="example@email.com"
             placeholderTextColor="#aaa"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(text) => {
+              setEmail(text);
+              setErrorMessage("");
+            }}
             keyboardType="email-address"
             autoCapitalize="none"
           />
@@ -58,22 +84,38 @@ export default function LoginScreen() {
         {/* Input Password */}
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Mật khẩu</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="********"
-            placeholderTextColor="#aaa"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry // Ẩn ký tự mật khẩu
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="********"
+              placeholderTextColor="#aaa"
+              value={password}
+              onChangeText={(text) => {
+                setPassword(text);
+                setErrorMessage("");
+              }}
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity
+              onPress={() => setShowPassword(!showPassword)}
+              style={styles.eyeIcon}
+            >
+              <Ionicons
+                name={showPassword ? "eye" : "eye-off"}
+                size={24}
+                color="#aaa"
+              />
+            </TouchableOpacity>
+          </View>
+          {errorMessage ? (
+            <Text style={styles.errorText}>{errorMessage}</Text>
+          ) : null}
         </View>
 
-        {/* Nút Login */}
         <TouchableOpacity style={styles.button} onPress={handleLogin}>
           <Text style={styles.buttonText}>Đăng nhập</Text>
         </TouchableOpacity>
 
-        {/* Link đăng ký (tùy chọn) */}
         <TouchableOpacity style={styles.linkContainer}>
           <Text style={styles.linkText}>Chưa có tài khoản? Đăng ký ngay</Text>
         </TouchableOpacity>
@@ -82,69 +124,67 @@ export default function LoginScreen() {
   );
 }
 
+// ... Styles giữ nguyên như cũ
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
+  container: { flex: 1, backgroundColor: "#fff" },
   innerContainer: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     paddingHorizontal: 24,
+    paddingBottom: 80,
   },
+  logo: { width: 200, height: 200, alignSelf: "center", marginBottom: 0 },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 26,
+    fontWeight: "bold",
+    color: "#333",
     marginBottom: 8,
+    textAlign: "center",
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: "#666",
     marginBottom: 32,
+    textAlign: "center",
   },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
+  inputContainer: { marginBottom: 20 },
+  label: { fontSize: 14, fontWeight: "600", color: "#333", marginBottom: 8 },
   input: {
     height: 50,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
     borderRadius: 8,
     paddingHorizontal: 16,
     fontSize: 16,
-    backgroundColor: '#fafafa',
+    backgroundColor: "#fafafa",
   },
+  passwordContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    backgroundColor: "#fafafa",
+    height: 50,
+    paddingHorizontal: 16,
+  },
+  passwordInput: { flex: 1, height: "100%", fontSize: 16 },
+  eyeIcon: { marginLeft: 10 },
+  errorText: { color: "red", fontSize: 13, marginTop: 6, marginLeft: 4 },
   button: {
-    backgroundColor: '#007AFF', // Màu xanh chủ đạo (có thể đổi theo brand)
+    backgroundColor: "#007AFF",
     height: 50,
     borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: 10,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  linkContainer: {
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  linkText: {
-    color: '#007AFF',
-    fontSize: 14,
-  },
+  buttonText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
+  linkContainer: { marginTop: 20, alignItems: "center" },
+  linkText: { color: "#007AFF", fontSize: 14 },
 });
