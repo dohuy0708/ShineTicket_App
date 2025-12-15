@@ -1,11 +1,11 @@
+// File: app/index.tsx
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Redirect } from "expo-router";
-import { useEffect, useState } from "react";
+import { useRouter } from "expo-router";
+import { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
 
 export default function Index() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     checkLoginStatus();
@@ -13,37 +13,31 @@ export default function Index() {
 
   const checkLoginStatus = async () => {
     try {
-      // Kiểm tra xem trong bộ nhớ có key 'userToken' không
+      // Thêm log để kiểm tra code có chạy không
+      console.log("--- ĐANG KIỂM TRA TRẠNG THÁI ĐĂNG NHẬP ---");
+      
       const token = await AsyncStorage.getItem("userToken");
+      console.log("Token tìm thấy:", token);
 
       if (token) {
-        setIsLoggedIn(true);
+        // Có token -> Vào thẳng App
+        console.log("-> Chuyển hướng vào Tabs");
+        router.replace("/(tabs)");
       } else {
-        setIsLoggedIn(false);
+        // Không có token -> Vào Login
+        console.log("-> Chuyển hướng vào Login");
+        router.replace("/login");
       }
     } catch (error) {
-      console.error("Lỗi kiểm tra đăng nhập:", error);
-      setIsLoggedIn(false);
-    } finally {
-      // Dù kết quả thế nào thì cũng tắt loading
-      setIsLoading(false);
+      console.error("Lỗi kiểm tra:", error);
+      router.replace("/login");
     }
   };
 
-  // 1. Nếu đang kiểm tra (load app), hiện vòng quay loading
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
-  }
-
-  // 2. Nếu đã đăng nhập -> Vào thẳng Tabs
-  if (isLoggedIn) {
-    return <Redirect href="/(tabs)" />;
-  }
-
-  // 3. Nếu chưa -> Về trang Login
-  return <Redirect href="/login" />;
+  // Chỉ cần hiển thị loading, việc chuyển hướng đã xử lý trong hàm trên
+  return (
+    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+      <ActivityIndicator size="large" color="#FFBE33" />
+    </View>
+  );
 }

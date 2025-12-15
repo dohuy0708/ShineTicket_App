@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
   eyeIcon: { marginLeft: 10 },
   errorText: { color: "red", fontSize: 13, marginTop: 6, marginLeft: 4 },
   button: {
-    backgroundColor: "#007AFF",
+    backgroundColor: "#FFBE33",
     height: 50,
     borderRadius: 8,
     justifyContent: "center",
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  buttonText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
+  buttonText: { color: "#000", fontSize: 18, fontWeight: "bold" },
   linkContainer: { marginTop: 20, alignItems: "center" },
   linkText: { color: "#007AFF", fontSize: 14 },
 });

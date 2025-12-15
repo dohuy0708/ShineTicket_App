@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   FlatList,
@@ -10,10 +11,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-// Import hook này để lấy khoảng cách an toàn (tránh tai thỏ)
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-// --- CẬP NHẬT: THÊM DỮ LIỆU ĐỂ TEST SCROLL ---
+// --- MÃ MÀU CHỦ ĐỀ MỚI ---
+const THEME_COLOR = "#FFBE33"; 
+
 const MOCK_EVENTS = [
   {
     id: "1",
@@ -82,9 +84,8 @@ const MOCK_EVENTS = [
 ];
 
 export default function EventScreen() {
-  // Lấy thông số safe area
+  const router = useRouter();
   const insets = useSafeAreaInsets();
-
   const [activeTab, setActiveTab] = useState("upcoming");
   const [searchText, setSearchText] = useState("");
 
@@ -110,14 +111,29 @@ export default function EventScreen() {
       </View>
       <View style={styles.divider} />
       <View style={styles.cardBottom}>
-        <TouchableOpacity style={[styles.actionButton, styles.manageBtn]}>
-          <Text style={styles.manageBtnText}>Quản lý</Text>
+       <TouchableOpacity 
+            style={[styles.actionButton, styles.manageBtn]}
+            onPress={() => router.push(`/manage/${item.id}`)}
+        >
+          <Text style={styles.manageBtnText}>Chi tiết</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.actionButton, styles.checkInBtn]}>
+        
+        {/* Nút Check-in màu Vàng */}
+       <TouchableOpacity 
+       style={[styles.actionButton, styles.checkInBtn]}
+       onPress={() => router.push({
+        pathname: `/scanner/${item.id}`,
+        // Truyền thêm dữ liệu qua params
+        params: { 
+            title: item.title,
+            time: item.time 
+        }
+        } as any)}
+        >
           <Ionicons
             name="qr-code-outline"
             size={18}
-            color="#fff"
+            color="#333" // Đổi màu icon sang đen cho nổi trên nền vàng
             style={{ marginRight: 4 }}
           />
           <Text style={styles.checkInBtnText}>Check-In</Text>
@@ -134,7 +150,6 @@ export default function EventScreen() {
         translucent
       />
 
-      {/* --- HEADER --- */}
       <View style={styles.header}>
         <Image
           source={require("../../assets/images/shineticket.png")}
@@ -146,58 +161,56 @@ export default function EventScreen() {
         </View>
       </View>
 
-      {/* --- SEARCH & FILTER --- */}
       <View style={styles.filterSection}>
-        {/* Thanh Search */}
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={20} color="#999" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Tìm kiếm sự kiện..."
-            value={searchText}
-            onChangeText={setSearchText}
-          />
-        </View>
+        <View style={styles.filterRow}>
+          <View style={styles.searchBar}>
+            <Ionicons name="search" size={20} color="#999" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Tìm kiếm..."
+              value={searchText}
+              onChangeText={setSearchText}
+            />
+          </View>
 
-        {/* Filter Tabs */}
-        <View style={styles.tabButtons}>
-          <TouchableOpacity
-            style={[
-              styles.filterBtn,
-              activeTab === "upcoming" && styles.activeFilterBtn,
-            ]}
-            onPress={() => setActiveTab("upcoming")}
-          >
-            <Text
+          <View style={styles.tabButtons}>
+            <TouchableOpacity
               style={[
-                styles.filterText,
-                activeTab === "upcoming" && styles.activeFilterText,
+                styles.filterBtn,
+                activeTab === "upcoming" && styles.activeFilterBtn,
               ]}
+              onPress={() => setActiveTab("upcoming")}
             >
-              Sắp tới
-            </Text>
-          </TouchableOpacity>
+              <Text
+                style={[
+                  styles.filterText,
+                  activeTab === "upcoming" && styles.activeFilterText,
+                ]}
+              >
+                Sắp tới
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[
-              styles.filterBtn,
-              activeTab === "past" && styles.activeFilterBtn,
-            ]}
-            onPress={() => setActiveTab("past")}
-          >
-            <Text
+            <TouchableOpacity
               style={[
-                styles.filterText,
-                activeTab === "past" && styles.activeFilterText,
+                styles.filterBtn,
+                activeTab === "past" && styles.activeFilterBtn,
               ]}
+              onPress={() => setActiveTab("past")}
             >
-              Đã qua
-            </Text>
-          </TouchableOpacity>
+              <Text
+                style={[
+                  styles.filterText,
+                  activeTab === "past" && styles.activeFilterText,
+                ]}
+              >
+                Đã qua
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
-      {/* --- DANH SÁCH --- */}
       <FlatList
         data={filteredEvents}
         renderItem={renderEventItem}
@@ -217,17 +230,13 @@ export default function EventScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // --- SỬA LỖI Ở ĐÂY ---
-    // Đổi màu nền chính từ #fff sang #F5F7FA (xám) để khớp với nền của list
-    // Điều này sẽ làm mất vệt trắng ở dưới đáy
     backgroundColor: "#F5F7FA",
   },
-  // Header Styles
   header: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 2,
     backgroundColor: "#fff",
   },
   headerLogo: {
@@ -244,55 +253,58 @@ const styles = StyleSheet.create({
     color: "#333",
     letterSpacing: 0.5,
   },
-
-  // Search & Filter Styles
   filterSection: {
     backgroundColor: "#fff",
     paddingHorizontal: 16,
-    paddingBottom: 12,
-    marginTop: 8,
+    paddingVertical: 12,
+    marginTop: 0,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
   },
+  filterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   searchBar: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#F5F7FA",
     borderRadius: 10,
-    paddingHorizontal: 12,
-    height: 44,
-    marginBottom: 16,
+    paddingHorizontal: 10,
+    height: 40,
   },
   searchInput: {
     flex: 1,
-    marginLeft: 10,
-    fontSize: 15,
+    marginLeft: 8,
+    fontSize: 14,
     color: "#333",
   },
   tabButtons: {
     flexDirection: "row",
-    gap: 12,
+    gap: 8,
   },
   filterBtn: {
     paddingVertical: 8,
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     borderRadius: 20,
     backgroundColor: "#F5F7FA",
   },
+  // --- CẬP NHẬT MÀU NỀN ---
   activeFilterBtn: {
-    backgroundColor: "#007AFF",
+    backgroundColor: THEME_COLOR, // Màu vàng #FFBE33
   },
   filterText: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#666",
     fontWeight: "600",
   },
+  // --- CẬP NHẬT MÀU CHỮ ---
   activeFilterText: {
-    color: "#fff",
+    color: "#333", // Đổi sang màu đen cho dễ đọc trên nền vàng
     fontWeight: "700",
   },
-
-  // List & Card Styles
   listContent: {
     padding: 16,
     paddingBottom: 100,
@@ -369,11 +381,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 14,
   },
+  // --- CẬP NHẬT NÚT CHECK-IN ---
   checkInBtn: {
-    backgroundColor: "#007AFF",
+    backgroundColor: THEME_COLOR, // Màu vàng #FFBE33
   },
   checkInBtnText: {
-    color: "#fff",
+    color: "#333", // Màu đen cho dễ đọc
     fontWeight: "bold",
     fontSize: 14,
   },

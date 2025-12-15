@@ -5,9 +5,9 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-// export const unstable_settings = {
-//   anchor: '(tabs)',
-// };
+export const unstable_settings = {
+  initialRouteName: 'index',
+};
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -15,8 +15,11 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
+        <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="scanner/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="manage/[id]" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

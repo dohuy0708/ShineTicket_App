@@ -8,8 +8,9 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#007AFF", // Màu xanh khi active
-        tabBarInactiveTintColor: "#999", // Màu xám khi inactive
+// ĐỔI MÀU Ở ĐÂY
+        tabBarActiveTintColor: '#FFBE33', // <--- Màu vàng
+        tabBarInactiveTintColor: '#999',
 
         // --- CẤU HÌNH MỚI TẠI ĐÂY ---
         // 1. Chuyển layout sang ngang (Icon bên cạnh Text)
