@@ -1,7 +1,9 @@
+import { loginService } from "@/services/authService";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -11,8 +13,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-// 1. Import AsyncStorage
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -20,30 +20,36 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  // Chuyển hàm handleLogin thành async để dùng await
+  // Chuyển hàm handleLogin thành async để gọi API BE
   const handleLogin = async () => {
+    console.log("[LOGIN] Bắt đầu đăng nhập", { email });
     setErrorMessage("");
 
     if (!email.trim() || !password.trim()) {
+      console.log("[LOGIN] Thiếu email hoặc mật khẩu");
       setErrorMessage("Vui lòng điền đầy đủ thông tin");
       return;
     }
 
-    if (email === "huydo@gmail.com" && password === "Aa123456") {
-      try {
-        // 2. LƯU TRẠNG THÁI ĐĂNG NHẬP VÀO BỘ NHỚ
-        await AsyncStorage.setItem("userToken", "dummy-token");
-        // (Lưu thêm info user nếu cần)
-        await AsyncStorage.setItem("userInfo", JSON.stringify({ email }));
+    setLoading(true);
 
-        console.log("Login Success & Saved to Storage");
-        router.replace("/(tabs)");
-      } catch (error) {
-        console.error("Lỗi lưu data", error);
+    try {
+      const result = await loginService(email.trim(), password.trim());
+
+      if (!result.success) {
+        setErrorMessage(
+          result.message || "Không thể kết nối tới server. Vui lòng thử lại"
+        );
+        return;
       }
-    } else {
-      setErrorMessage("Vui lòng kiểm tra lại email/mật khẩu của bạn");
+
+      console.log("[LOGIN] Đăng nhập thành công, điều hướng vào tabs");
+      router.replace("/(tabs)");
+    } finally {
+      console.log("[LOGIN] Kết thúc quá trình đăng nhập");
+      setLoading(false);
     }
   };
 
@@ -112,9 +118,21 @@ export default function LoginScreen() {
           ) : null}
         </View>
 
-        <TouchableOpacity style={styles.button} onPress={handleLogin}>
-          <Text style={styles.buttonText}>Đăng nhập</Text>
-        </TouchableOpacity>
+        <View style={styles.buttonWrapper}>
+          <TouchableOpacity
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            <Text style={styles.buttonText}>Đăng nhập</Text>
+          </TouchableOpacity>
+
+          {loading && (
+            <View style={styles.buttonLoadingOverlay} pointerEvents="none">
+              <ActivityIndicator color="#000" />
+            </View>
+          )}
+        </View>
 
         <TouchableOpacity style={styles.linkContainer}>
           <Text style={styles.linkText}>Chưa có tài khoản? Đăng ký ngay</Text>
@@ -171,18 +189,35 @@ const styles = StyleSheet.create({
   passwordInput: { flex: 1, height: "100%", fontSize: 16 },
   eyeIcon: { marginLeft: 10 },
   errorText: { color: "red", fontSize: 13, marginTop: 6, marginLeft: 4 },
+  buttonWrapper: {
+    position: "relative",
+    marginTop: 10,
+  },
   button: {
     backgroundColor: "#FFBE33",
     height: 50,
     borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+  },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  buttonLoadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.4)",
+    borderRadius: 8,
   },
   buttonText: { color: "#000", fontSize: 18, fontWeight: "bold" },
   linkContainer: { marginTop: 20, alignItems: "center" },

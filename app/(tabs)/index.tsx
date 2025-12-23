@@ -1,7 +1,9 @@
+import { EventStatus, useMyShows } from "@/hooks/useMyShows";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Image,
   StatusBar,
@@ -14,133 +16,138 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // --- MÃ MÀU CHỦ ĐỀ MỚI ---
-const THEME_COLOR = "#FFBE33"; 
-
-const MOCK_EVENTS = [
-  {
-    id: "1",
-    title: "Đại nhạc hội EDM 2025",
-    time: "19:00 - 20/12/2025",
-    status: "upcoming",
-    image:
-      "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&q=80",
-  },
-  {
-    id: "2",
-    title: "Hội thảo Tech Summit",
-    time: "08:00 - 25/12/2025",
-    status: "upcoming",
-    image:
-      "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=500&q=80",
-  },
-  {
-    id: "3",
-    title: "Workshop: AI & Future",
-    time: "14:00 - 28/12/2025",
-    status: "upcoming",
-    image:
-      "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=500&q=80",
-  },
-  {
-    id: "4",
-    title: "Gala Dinner Doanh Nhân",
-    time: "18:30 - 30/12/2025",
-    status: "upcoming",
-    image:
-      "https://images.unsplash.com/photo-1519671482538-581aca198e32?w=500&q=80",
-  },
-  {
-    id: "5",
-    title: "Lễ hội Ẩm thực Đường phố",
-    time: "09:00 - 01/01/2026",
-    status: "upcoming",
-    image:
-      "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=500&q=80",
-  },
-  {
-    id: "6",
-    title: "Triển lãm tranh nghệ thuật",
-    time: "09:00 - 10/11/2025",
-    status: "past",
-    image:
-      "https://images.unsplash.com/photo-1531058020387-3be344556be6?w=500&q=80",
-  },
-  {
-    id: "7",
-    title: "Họp mặt CLB Startup",
-    time: "08:00 - 05/11/2025",
-    status: "past",
-    image:
-      "https://images.unsplash.com/photo-1528605248644-14dd04022da1?w=500&q=80",
-  },
-  {
-    id: "8",
-    title: "Music Show: Mùa Thu",
-    time: "20:00 - 01/10/2025",
-    status: "past",
-    image:
-      "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=500&q=80",
-  },
-];
+const THEME_COLOR = "#FFBE33";
 
 export default function EventScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [activeTab, setActiveTab] = useState("upcoming");
+  const [activeTab, setActiveTab] = useState<EventStatus>("all");
   const [searchText, setSearchText] = useState("");
+  const { events, loading, refreshing, loadMore, refresh, loadingMore } =
+    useMyShows();
 
-  const filteredEvents = MOCK_EVENTS.filter(
-    (event) =>
-      event.status === activeTab &&
-      event.title.toLowerCase().includes(searchText.toLowerCase())
-  );
+  const filteredEvents = React.useMemo(() => {
+    const search = searchText.toLowerCase();
 
-  const renderEventItem = ({ item }: { item: any }) => (
-    <View style={styles.card}>
-      <View style={styles.cardTop}>
-        <Image source={{ uri: item.image }} style={styles.eventImage} />
-        <View style={styles.eventInfo}>
-          <Text style={styles.eventTitle} numberOfLines={2}>
-            {item.title}
-          </Text>
-          <View style={styles.timeContainer}>
-            <Ionicons name="time-outline" size={14} color="#666" />
-            <Text style={styles.eventTime}>{item.time}</Text>
+    const list = events.filter((event) => {
+      if (!event.title.toLowerCase().includes(search)) return false;
+
+      if (activeTab === "all") return true;
+      return event.status === activeTab;
+    });
+
+    if (activeTab === "today") {
+      return [...list].sort((a, b) => {
+        const aTime = a.startTime ? new Date(a.startTime).getTime() : 0;
+        const bTime = b.startTime ? new Date(b.startTime).getTime() : 0;
+        return aTime - bTime;
+      });
+    }
+
+    if (activeTab === "all") {
+      // Sắp xếp theo thứ tự ưu tiên trạng thái:
+      // Hôm nay -> Sắp tới -> Đã qua
+      const getWeight = (status: EventStatus) => {
+        if (status === "today") return 0;
+        if (status === "upcoming") return 1;
+        if (status === "past") return 2;
+        return 3;
+      };
+
+      return [...list].sort((a, b) => {
+        const wa = getWeight(a.status);
+        const wb = getWeight(b.status);
+        if (wa !== wb) return wa - wb;
+
+        // Nếu cùng trạng thái thì sắp xếp theo thời gian bắt đầu
+        const aTime = a.startTime ? new Date(a.startTime).getTime() : 0;
+        const bTime = b.startTime ? new Date(b.startTime).getTime() : 0;
+        return aTime - bTime;
+      });
+    }
+
+    return list;
+  }, [events, activeTab, searchText]);
+
+  const renderEventItem = ({ item }: { item: any }) => {
+    const isCheckInEnabled = item.status === "today";
+
+    // Màu hiển thị thời gian theo trạng thái
+    let timeColor = "#666"; // mặc định cho "đã qua" hoặc các trạng thái khác
+    if (item.status === "today") {
+      timeColor = "#27AE60"; // xanh lá cho hôm nay
+    } else if (item.status === "upcoming") {
+      timeColor = "#007AFF"; // xanh dương cho sắp tới
+    }
+
+    return (
+      <View style={styles.card}>
+        <View style={styles.cardTop}>
+          <Image source={{ uri: item.image }} style={styles.eventImage} />
+          <View style={styles.eventInfo}>
+            <Text style={styles.eventTitle} numberOfLines={2}>
+              {item.title}
+            </Text>
+            {item.subTitle ? (
+              <Text style={styles.showTitle} numberOfLines={1}>
+                {item.subTitle}
+              </Text>
+            ) : null}
+            <View style={styles.timeContainer}>
+              <Ionicons name="time-outline" size={14} color={timeColor} />
+              <Text style={[styles.eventTime, { color: timeColor }]}>
+                {item.time}
+              </Text>
+            </View>
           </View>
         </View>
-      </View>
-      <View style={styles.divider} />
-      <View style={styles.cardBottom}>
-       <TouchableOpacity 
+        <View style={styles.divider} />
+        <View style={styles.cardBottom}>
+          <TouchableOpacity
             style={[styles.actionButton, styles.manageBtn]}
             onPress={() => router.push(`/manage/${item.id}`)}
-        >
-          <Text style={styles.manageBtnText}>Chi tiết</Text>
-        </TouchableOpacity>
-        
-        {/* Nút Check-in màu Vàng */}
-       <TouchableOpacity 
-       style={[styles.actionButton, styles.checkInBtn]}
-       onPress={() => router.push({
-        pathname: `/scanner/${item.id}`,
-        // Truyền thêm dữ liệu qua params
-        params: { 
-            title: item.title,
-            time: item.time 
-        }
-        } as any)}
-        >
-          <Ionicons
-            name="qr-code-outline"
-            size={18}
-            color="#333" // Đổi màu icon sang đen cho nổi trên nền vàng
-            style={{ marginRight: 4 }}
-          />
-          <Text style={styles.checkInBtnText}>Check-In</Text>
-        </TouchableOpacity>
+          >
+            <Text style={styles.manageBtnText}>Chi tiết</Text>
+          </TouchableOpacity>
+
+          {/* Nút Check-in màu Vàng */}
+          <TouchableOpacity
+            disabled={!isCheckInEnabled}
+            style={[
+              styles.actionButton,
+              styles.checkInBtn,
+              !isCheckInEnabled && styles.checkInBtnDisabled,
+            ]}
+            onPress={() =>
+              router.push({
+                pathname: `/scanner/${item.id}`,
+                // Truyền thêm dữ liệu qua params
+                params: {
+                  title: item.title,
+                  time: item.time,
+                },
+              } as any)
+            }
+          >
+            <Ionicons
+              name="qr-code-outline"
+              size={18}
+              color="#333" // Đổi màu icon sang đen cho nổi trên nền vàng
+              style={{ marginRight: 4 }}
+            />
+            <Text
+              style={[
+                styles.checkInBtnText,
+                !isCheckInEnabled && styles.checkInBtnTextDisabled,
+              ]}
+            >
+              Check-In
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -162,52 +169,98 @@ export default function EventScreen() {
       </View>
 
       <View style={styles.filterSection}>
-        <View style={styles.filterRow}>
-          <View style={styles.searchBar}>
-            <Ionicons name="search" size={20} color="#999" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Tìm kiếm..."
-              value={searchText}
-              onChangeText={setSearchText}
-            />
-          </View>
+        {/* Thanh tìm kiếm nằm trên */}
+        <View style={styles.searchBar}>
+          <Ionicons name="search" size={20} color="#999" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Tìm kiếm..."
+            value={searchText}
+            onChangeText={setSearchText}
+          />
+        </View>
 
-          <View style={styles.tabButtons}>
-            <TouchableOpacity
+        {/* Hàng trạng thái nằm dưới */}
+        <View style={styles.tabButtons}>
+          {/* Tất cả */}
+          <TouchableOpacity
+            style={[
+              styles.filterBtn,
+              activeTab === "all" && styles.activeFilterBtn,
+            ]}
+            onPress={() => setActiveTab("all")}
+          >
+            <Text
               style={[
-                styles.filterBtn,
-                activeTab === "upcoming" && styles.activeFilterBtn,
+                styles.filterText,
+                activeTab === "all" && styles.activeFilterText,
               ]}
-              onPress={() => setActiveTab("upcoming")}
+              numberOfLines={1}
+              ellipsizeMode="tail"
             >
-              <Text
-                style={[
-                  styles.filterText,
-                  activeTab === "upcoming" && styles.activeFilterText,
-                ]}
-              >
-                Sắp tới
-              </Text>
-            </TouchableOpacity>
+              Tất cả
+            </Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity
+          {/* Hôm nay */}
+          <TouchableOpacity
+            style={[
+              styles.filterBtn,
+              activeTab === "today" && styles.activeFilterBtn,
+            ]}
+            onPress={() => setActiveTab("today")}
+          >
+            <Text
               style={[
-                styles.filterBtn,
-                activeTab === "past" && styles.activeFilterBtn,
+                styles.filterText,
+                activeTab === "today" && styles.activeFilterText,
               ]}
-              onPress={() => setActiveTab("past")}
+              numberOfLines={1}
+              ellipsizeMode="tail"
             >
-              <Text
-                style={[
-                  styles.filterText,
-                  activeTab === "past" && styles.activeFilterText,
-                ]}
-              >
-                Đã qua
-              </Text>
-            </TouchableOpacity>
-          </View>
+              Hôm nay
+            </Text>
+          </TouchableOpacity>
+
+          {/* Sắp tới */}
+          <TouchableOpacity
+            style={[
+              styles.filterBtn,
+              activeTab === "upcoming" && styles.activeFilterBtn,
+            ]}
+            onPress={() => setActiveTab("upcoming")}
+          >
+            <Text
+              style={[
+                styles.filterText,
+                activeTab === "upcoming" && styles.activeFilterText,
+              ]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              Sắp tới
+            </Text>
+          </TouchableOpacity>
+
+          {/* Đã qua */}
+          <TouchableOpacity
+            style={[
+              styles.filterBtn,
+              activeTab === "past" && styles.activeFilterBtn,
+            ]}
+            onPress={() => setActiveTab("past")}
+          >
+            <Text
+              style={[
+                styles.filterText,
+                activeTab === "past" && styles.activeFilterText,
+              ]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              Đã qua
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -217,9 +270,26 @@ export default function EventScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        // Kéo xuống để refresh
+        refreshing={refreshing}
+        onRefresh={refresh}
+        // Lướt tới cuối để load thêm (phân trang)
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.6}
+        ListFooterComponent={
+          loadingMore ? (
+            <View style={styles.footerLoading}>
+              <ActivityIndicator size="small" color={THEME_COLOR} />
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>Không tìm thấy sự kiện nào</Text>
+            {loading ? (
+              <ActivityIndicator size="large" color={THEME_COLOR} />
+            ) : (
+              <Text style={styles.emptyText}>Không tìm thấy sự kiện nào</Text>
+            )}
           </View>
         }
       />
@@ -261,13 +331,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
   },
-  filterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
   searchBar: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#F5F7FA",
@@ -283,20 +347,27 @@ const styles = StyleSheet.create({
   },
   tabButtons: {
     flexDirection: "row",
-    gap: 8,
+    justifyContent: "space-between",
+    marginTop: 10,
   },
   filterBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
+    flex: 1,
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+    borderRadius: 16,
     backgroundColor: "#F5F7FA",
+    borderWidth: 1,
+    borderColor: "#ddd",
+    marginHorizontal: 2,
+    justifyContent: "center",
+    alignItems: "center",
   },
   // --- CẬP NHẬT MÀU NỀN ---
   activeFilterBtn: {
     backgroundColor: THEME_COLOR, // Màu vàng #FFBE33
   },
   filterText: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#666",
     fontWeight: "600",
   },
@@ -309,6 +380,10 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 100,
     backgroundColor: "#F5F7FA",
+  },
+  footerLoading: {
+    paddingVertical: 16,
+    alignItems: "center",
   },
   card: {
     backgroundColor: "#fff",
@@ -344,6 +419,11 @@ const styles = StyleSheet.create({
     color: "#222",
     lineHeight: 24,
     marginBottom: 8,
+  },
+  showTitle: {
+    fontSize: 13,
+    color: "#555",
+    marginBottom: 4,
   },
   timeContainer: {
     flexDirection: "row",
@@ -389,6 +469,12 @@ const styles = StyleSheet.create({
     color: "#333", // Màu đen cho dễ đọc
     fontWeight: "bold",
     fontSize: 14,
+  },
+  checkInBtnDisabled: {
+    backgroundColor: "#E0E0E0",
+  },
+  checkInBtnTextDisabled: {
+    color: "#888",
   },
   emptyContainer: {
     alignItems: "center",
