@@ -1,74 +1,28 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
-    FlatList,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  FlatList,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
 // 1. Import thư viện mới (Nhớ xóa react-native-chart-kit đi)
 import { PieChart } from "react-native-gifted-charts";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  CheckinItem,
+  getShowCheckins,
+  getShowOverview,
+  TicketTypeOverview,
+} from "../../services/showService";
 
-// --- MOCK DATA ---
-const EVENT_INFO = {
-  id: "1",
-  title: "Đại nhạc hội EDM 2025 - Light It Up",
-  image: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&q=80",
-  time: "19:00",
-  date: "20/12/2025",
-  address: "Sân vận động Mỹ Đình, Hà Nội",
-  totalTickets: 5000,
-  checkedIn: 1250,
-  sold: 4500,
-};
-
-const TICKET_TYPES = [
-  { type: "VIP", sold: 500, total: 500, price: "2.500.000đ" },
-  { type: "GA (Đứng)", sold: 2500, total: 3000, price: "900.000đ" },
-  { type: "Standard (Ngồi)", sold: 1500, total: 1500, price: "1.200.000đ" },
-];
-
-const CHECKIN_HISTORY = [
-  {
-    id: "1",
-    customerName: "Nguyễn Văn A",
-    phone: "0901234567",
-    ticketType: "VIP",
-    seat: "Row A - 01",
-    price: "2.500.000đ",
-    purchaseDate: "10/11/2025",
-    checkInTime: "18:30 20/12/2025",
-    status: "checked",
-  },
-  {
-    id: "2",
-    customerName: "Trần Thị B",
-    phone: "0912345678",
-    ticketType: "GA",
-    seat: "Zone B",
-    price: "900.000đ",
-    purchaseDate: "12/11/2025",
-    checkInTime: "18:45 20/12/2025",
-    status: "checked",
-  },
-  {
-    id: "3",
-    customerName: "Lê Hoàng C",
-    phone: "0987654321",
-    ticketType: "Standard",
-    seat: "Zone C - 12",
-    price: "1.200.000đ",
-    purchaseDate: "15/11/2025",
-    checkInTime: "19:00 20/12/2025",
-    status: "checked",
-  },
-];
+// State will be populated from BE
+const INITIAL_EVENT = null;
 
 export default function ManageEventScreen() {
   const { id } = useLocalSearchParams();
@@ -77,13 +31,77 @@ export default function ManageEventScreen() {
   
   const [activeTab, setActiveTab] = useState("overview"); 
   const [searchText, setSearchText] = useState("");
+  const [eventInfo, setEventInfo] = useState<any>(INITIAL_EVENT);
+  const [ticketTypes, setTicketTypes] = useState<TicketTypeOverview[]>([]);
+  const [checkinHistory, setCheckinHistory] = useState<CheckinItem[]>([]);
+  const [loadingOverview, setLoadingOverview] = useState(false);
+  const [loadingCheckins, setLoadingCheckins] = useState(false);
 
-  // 2. Tính toán dữ liệu cho biểu đồ Gifted Charts
-  const totalSold = EVENT_INFO.sold;
-  const checkedInCount = EVENT_INFO.checkedIn;
-  const notCheckedInCount = totalSold - checkedInCount;
+  useEffect(() => {
+    if (!id) return;
+    const sid = String(id);
+    fetchOverview(sid);
+    fetchCheckins(sid);
+  }, [id]);
 
-  const percentCheckedIn = Math.round((checkedInCount / totalSold) * 100);
+  function formatDateRange(start?: string, end?: string) {
+    try {
+      if (!start && !end) return "";
+      const opts: Intl.DateTimeFormatOptions = {
+        hour: "2-digit",
+        minute: "2-digit",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      };
+      if (start && end) {
+        return `${new Date(start).toLocaleString("vi-VN", opts)} - ${new Date(end).toLocaleString(
+          "vi-VN",
+          opts
+        )}`;
+      }
+      return new Date(start || end!).toLocaleString("vi-VN", opts);
+    } catch {
+      return "";
+    }
+  }
+
+  async function fetchOverview(sid: string) {
+    try {
+      setLoadingOverview(true);
+      console.log("[MANAGE] fetchOverview start", sid);
+      const res = await getShowOverview(sid);
+      console.log("[MANAGE] fetchOverview result", res);
+      if (!res.error) {
+        setEventInfo(res);
+        setTicketTypes(res.ticketTypes || []);
+      }
+    } finally {
+      setLoadingOverview(false);
+    }
+  }
+
+  async function fetchCheckins(sid: string) {
+    try {
+      setLoadingCheckins(true);
+      console.log("[MANAGE] fetchCheckins start", sid);
+      const res = await getShowCheckins(sid, 1, 100);
+      console.log("[MANAGE] fetchCheckins result", res);
+      if (!res.error) {
+        setCheckinHistory(res.items || []);
+      }
+    } finally {
+      setLoadingCheckins(false);
+    }
+  }
+
+  // 2. Tính toán dữ liệu cho biểu đồ Gifted Charts (từ BE)
+  const totalSold = eventInfo?.totalSold ?? 0;
+  const checkedInCount = eventInfo?.totalCheckedIn ?? 0;
+  const totalCapacity = eventInfo?.totalCapacity ?? 0;
+  const notCheckedInCount = Math.max(totalSold - checkedInCount, 0);
+
+  const percentCheckedIn = totalSold > 0 ? Math.round((checkedInCount / totalSold) * 100) : 0;
   const percentNotCheckedIn = 100 - percentCheckedIn;
 
   // Dữ liệu truyền vào biểu đồ
@@ -91,16 +109,16 @@ export default function ManageEventScreen() {
     {
       value: checkedInCount,
       color: "#FFBE33",
-      text: `${percentCheckedIn}%`, // Hiển thị % lên hình
+      text: `${percentCheckedIn}%`,
       textColor: "#333",
-      fontWeight: 'bold'
+      fontWeight: "bold",
     },
     {
       value: notCheckedInCount,
       color: "#E0E0E0",
-      text: `${percentNotCheckedIn}%`, // Hiển thị % lên hình
+      text: `${percentNotCheckedIn}%`,
       textColor: "#666",
-      fontWeight: 'bold'
+      fontWeight: "bold",
     },
   ];
 
@@ -113,7 +131,7 @@ export default function ManageEventScreen() {
           <View style={{ height: 12, width: 12, borderRadius: 6, backgroundColor: '#FFBE33', marginRight: 8 }} />
           <View>
             <Text style={{ fontSize: 14, color: '#666' }}>Đã Check-in</Text>
-            <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#333' }}>{checkedInCount}</Text>
+              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#333' }}>{checkedInCount}</Text>
           </View>
         </View>
         
@@ -164,19 +182,19 @@ export default function ManageEventScreen() {
 
       <View style={[styles.sectionCard, {marginBottom: 100}]}>
         <Text style={styles.sectionTitle}>Chi tiết vé bán</Text>
-        {TICKET_TYPES.map((ticket, index) => (
-            <View key={index} style={styles.ticketRow}>
-                <View>
-                    <Text style={styles.ticketType}>{ticket.type}</Text>
-                    <Text style={styles.ticketPrice}>{ticket.price}</Text>
-                </View>
-                <View style={{alignItems: 'flex-end'}}>
-                    <Text style={styles.ticketSold}>{ticket.sold} / {ticket.total}</Text>
-                    <View style={styles.progressBarBg}>
-                        <View style={[styles.progressBarFill, {width: `${(ticket.sold/ticket.total)*100}%`}]} />
-                    </View>
-                </View>
+        {ticketTypes.map((ticket, index) => (
+          <View key={index} style={styles.ticketRow}>
+            <View>
+              <Text style={styles.ticketType}>{ticket.name}</Text>
+              <Text style={styles.ticketPrice}>{(ticket.price || 0).toLocaleString('vi-VN')}đ</Text>
             </View>
+            <View style={{alignItems: 'flex-end'}}>
+              <Text style={styles.ticketSold}>{ticket.quantitySold} / {ticket.quantityTotal}</Text>
+              <View style={styles.progressBarBg}>
+                <View style={[styles.progressBarFill, {width: `${Math.round(ticket.progressPercent|| (ticket.quantityTotal? (ticket.quantitySold/ticket.quantityTotal)*100:0))}%`}]} />
+              </View>
+            </View>
+          </View>
         ))}
       </View>
     </ScrollView>
@@ -184,9 +202,9 @@ export default function ManageEventScreen() {
 
   // --- RENDER TAB 2: CHECK-IN (Giữ nguyên) ---
   const renderCheckInTab = () => {
-    const filteredList = CHECKIN_HISTORY.filter(item => 
-        item.customerName.toLowerCase().includes(searchText.toLowerCase()) ||
-        item.phone.includes(searchText)
+    const filteredList = checkinHistory.filter(item =>
+      (item.customer?.name || "").toLowerCase().includes(searchText.toLowerCase()) ||
+      (item.customer?.phone || "").includes(searchText)
     );
 
     return (
@@ -208,21 +226,21 @@ export default function ManageEventScreen() {
                 renderItem={({item}) => (
                     <View style={styles.checkInItem}>
                         <View style={styles.checkInHeader}>
-                            <Text style={styles.customerName}>{item.customerName}</Text>
-                            <Text style={styles.checkInTime}>{item.checkInTime}</Text>
+                      <Text style={styles.customerName}>{item.customer?.name}</Text>
+                      <Text style={styles.checkInTime}>{item.display?.timeLabel}</Text>
                         </View>
                         <View style={styles.checkInDetailRow}>
                             <Ionicons name="call-outline" size={14} color="#666" />
-                            <Text style={styles.detailText}>{item.phone}</Text>
+                      <Text style={styles.detailText}>{item.customer?.phone}</Text>
                         </View>
                         <View style={styles.ticketBadgeRow}>
                             <View style={styles.ticketBadge}>
-                                <Text style={styles.badgeText}>{item.ticketType}</Text>
+                        <Text style={styles.badgeText}>{item.ticketType?.name}</Text>
                             </View>
                             <Text style={styles.seatText}> • {item.seat}</Text>
                         </View>
                         <View style={styles.purchaseInfo}>
-                            <Text style={styles.purchaseText}>Mua ngày: {item.purchaseDate} - {item.price}</Text>
+                      <Text style={styles.purchaseText}>Mua ngày: {item.purchaseDate || ""} - {item.display?.priceLabel || (item.price? item.price.toLocaleString('vi-VN') + 'đ' : '')}</Text>
                         </View>
                     </View>
                 )}
@@ -242,12 +260,12 @@ export default function ManageEventScreen() {
         </TouchableOpacity>
         
         <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerEventTitle} numberOfLines={1}>
-                {EVENT_INFO.title}
-            </Text>
-            <Text style={styles.headerEventTime}>
-                {EVENT_INFO.time} - {EVENT_INFO.date}
-            </Text>
+          <Text style={styles.headerEventTitle} numberOfLines={1}>
+            {eventInfo?.show?.name ?? "Tên sự kiện"}
+          </Text>
+          <Text style={styles.headerEventTime}>
+            {formatDateRange(eventInfo?.show?.startTime, eventInfo?.show?.endTime)}
+          </Text>
         </View>
         
         <View style={{width: 24}} />
@@ -275,12 +293,17 @@ export default function ManageEventScreen() {
 
       {/* FLOATING ACTION BUTTON */}
       <View style={[styles.floatingContainer, { paddingBottom: insets.bottom + 10 }]}>
-        <TouchableOpacity 
+        <TouchableOpacity
             style={styles.floatingBtn}
-            onPress={() => router.push({
+            onPress={() =>
+              router.push({
                 pathname: `/scanner/${id}`,
-                params: { title: EVENT_INFO.title, time: `${EVENT_INFO.date} - ${EVENT_INFO.time}` }
-            } as any)}
+                params: {
+                  title: eventInfo?.show?.name ?? "",
+                  time: formatDateRange(eventInfo?.show?.startTime, eventInfo?.show?.endTime),
+                },
+              } as any)
+            }
         >
             <Ionicons name="qr-code-outline" size={24} color="#333" style={{marginRight: 8}}/>
             <Text style={styles.floatingBtnText}>CHECK-IN</Text>

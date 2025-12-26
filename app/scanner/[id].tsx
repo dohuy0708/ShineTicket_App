@@ -1,7 +1,7 @@
 // File: app/scanner/[id].tsx
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
-import { CameraView, useCameraPermissions } from "expo-camera";
+import { Camera, useCameraPermissions } from "expo-camera";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -15,6 +15,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BASE_URL, TEST_ADMIN_TOKEN } from "../../constants/api";
+// `Camera` typings sometimes resolve to a module object; alias and cast to `any`
+// so it can be used safely as a JSX element in TS projects with mismatched types.
+const ExpoCamera: any = Camera as any;
 
 export default function QrScannerScreen() {
   // 1. Lấy thêm title và time từ params
@@ -183,11 +186,11 @@ export default function QrScannerScreen() {
         translucent
       />
 
-      <CameraView
+      <ExpoCamera
         style={StyleSheet.absoluteFillObject}
-        facing="back"
-        onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
-        barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+        type="back"
+        onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
+        barCodeScannerSettings={{ barCodeTypes: ["qr"] }}
       >
         <View style={styles.overlay}>
           {/* Header mới: Hiển thị thông tin sự kiện */}
@@ -249,7 +252,7 @@ export default function QrScannerScreen() {
             )}
           </View>
         </View>
-      </CameraView>
+      </ExpoCamera>
     </View>
   );
 }

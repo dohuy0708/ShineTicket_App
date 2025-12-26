@@ -1,4 +1,4 @@
-export const BASE_URL = "http://192.168.0.93:3001/api";
+export const BASE_URL = "http://192.168.31.223:3001/api";
 
 // Token tạm thời để test API check-in (sau sẽ bỏ, dùng token login thật)
 export const TEST_ADMIN_TOKEN =

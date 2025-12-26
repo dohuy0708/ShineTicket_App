@@ -1,6 +1,7 @@
 import { BASE_URL } from "@/constants/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
+import { Alert } from "react-native";
 
 export type EventStatus = "all" | "today" | "upcoming" | "past";
 
@@ -14,73 +15,8 @@ export type EventItem = {
   image: string;
 };
 
-// Dữ liệu mock fallback khi gọi API lỗi
-const MOCK_EVENTS: EventItem[] = [
-  {
-    id: "1",
-    title: "Đại nhạc hội EDM 2025",
-    time: "20:00 - 25/12/2025",
-    status: "upcoming",
-    image:
-      "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&q=80",
-  },
-  {
-    id: "2",
-    title: "Sunrise Concert",
-    time: "08:00 - 25/12/2025",
-    status: "today",
-    image:
-      "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=500&q=80",
-  },
-  {
-    id: "3",
-    title: "Workshop: AI & Future",
-    time: "14:00 - 28/12/2025",
-    status: "upcoming",
-    image:
-      "https://images.unsplash.com/photo-1519671482538-581aca198e32?w=500&q=80",
-  },
-  {
-    id: "4",
-    title: "Gala Dinner Doanh Nhân",
-    time: "18:30 - 30/12/2025",
-    status: "upcoming",
-    image:
-      "https://images.unsplash.com/photo-1519671482538-581aca198e32?w=500&q=80",
-  },
-  {
-    id: "5",
-    title: "Lễ hội Ẩm thực Đường phố",
-    time: "09:00 - 01/01/2026",
-    status: "upcoming",
-    image:
-      "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=500&q=80",
-  },
-  {
-    id: "6",
-    title: "Triển lãm tranh nghệ thuật",
-    time: "09:00 - 10/11/2025",
-    status: "past",
-    image:
-      "https://images.unsplash.com/photo-1531058020387-3be344556be6?w=500&q=80",
-  },
-  {
-    id: "7",
-    title: "Họp mặt CLB Startup",
-    time: "08:00 - 05/11/2025",
-    status: "past",
-    image:
-      "https://images.unsplash.com/photo-1528605248644-14dd04022da1?w=500&q=80",
-  },
-  {
-    id: "8",
-    title: "Music Show: Mùa Thu",
-    time: "20:00 - 01/10/2025",
-    status: "past",
-    image:
-      "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=500&q=80",
-  },
-];
+// When API fails or token missing, do not return mock/sample data.
+// Show an alert to the user and return an empty `events` array.
 
 function getEventStatus(startTime?: string): EventStatus {
   try {
@@ -146,9 +82,12 @@ export async function getMyShowsService(
     const token = await AsyncStorage.getItem("userToken");
     if (!token) {
       console.log("[HOME] Không tìm thấy token, không thể load shows");
-      // Không có token: trả về mock để UI vẫn hiển thị được
+      Alert.alert(
+        "Lỗi",
+        "Bạn chưa đăng nhập. Vui lòng đăng nhập để xem danh sách sự kiện."
+      );
       return {
-        events: MOCK_EVENTS,
+        events: [],
         error: "Missing token",
         hasMore: false,
       };
@@ -196,10 +135,184 @@ export async function getMyShowsService(
       data: err?.response?.data,
     });
 
+    const message = err?.message ?? "Đã xảy ra lỗi khi tải sự kiện";
+    Alert.alert("Lỗi tải sự kiện", message);
+
     return {
-      events: MOCK_EVENTS,
-      error: err?.message ?? "Đã xảy ra lỗi khi tải sự kiện",
+      events: [],
+      error: message,
       hasMore: false,
     };
+  }
+}
+
+// --- New: Get show overview ---
+export type TicketTypeOverview = {
+  name: string;
+  price: number;
+  quantityTotal: number;
+  quantitySold: number;
+  quantityCheckedIn: number;
+  progressPercent?: number;
+  available?: number;
+};
+
+export type ShowOverviewResult = {
+  show?: {
+    id: string;
+    name: string;
+    startTime?: string;
+    endTime?: string;
+  } | null;
+  ticketTypes?: TicketTypeOverview[];
+  totalSold?: number;
+  totalCapacity?: number;
+  totalCheckedIn?: number;
+  notArrived?: number;
+  checkedInPercent?: number;
+  error?: string | null;
+};
+
+export async function getShowOverview(
+  showId: string
+): Promise<ShowOverviewResult> {
+  try {
+    const token = await AsyncStorage.getItem("userToken");
+    if (!token) {
+      Alert.alert("Lỗi", "Bạn chưa đăng nhập. Vui lòng đăng nhập để tiếp tục.");
+      return { error: "Missing token" };
+    }
+
+    const url = `${BASE_URL}/shows/${showId}/overview`;
+    console.log("[SHOW] Request overview", { url, showId });
+    const resp = await axios.get(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    console.log("[SHOW] Response overview", { status: resp.status, data: resp.data });
+
+    const data = resp?.data?.data || {};
+
+    const ticketTypes: TicketTypeOverview[] = (data.ticketTypes || []).map(
+      (t: any) => {
+        const quantityTotal = Number(t.quantityTotal ?? t.quantity ?? 0);
+        const quantitySold = Number(t.quantitySold ?? 0);
+        const quantityCheckedIn = Number(t.quantityCheckedIn ?? 0);
+        const available = Math.max(quantityTotal - quantitySold, 0);
+        const progressPercent =
+          quantityTotal > 0 ? (quantitySold / quantityTotal) * 100 : 0;
+
+        return {
+          name: t.name || t.type || "",
+          price: Number(t.price ?? 0),
+          quantityTotal,
+          quantitySold,
+          quantityCheckedIn,
+          available,
+          progressPercent,
+        };
+      }
+    );
+
+    return {
+      show: data.show || null,
+      ticketTypes,
+      totalSold: Number(data.totalSold ?? 0),
+      totalCapacity: Number(data.totalCapacity ?? 0),
+      totalCheckedIn: Number(data.totalCheckedIn ?? 0),
+      notArrived: Number(data.notArrived ?? 0),
+      checkedInPercent: Number(data.checkedInPercent ?? 0),
+      error: null,
+    };
+  } catch (err: any) {
+    console.log("[SHOW] Lỗi gọi API overview", {
+      message: err?.message,
+      status: err?.response?.status,
+      data: err?.response?.data,
+    });
+    const message = err?.response?.data?.message ?? err?.message ?? "Lỗi khi tải dữ liệu";
+    Alert.alert("Lỗi tải tổng quan", message);
+    return { error: message };
+  }
+}
+
+// --- New: Get show checkins (paginated) ---
+export type CheckinItem = {
+  id: string;
+  ticketId: string;
+  customer: { name?: string; phone?: string };
+  ticketType?: { id?: string; name?: string };
+  seat?: string;
+  price?: number;
+  purchaseDate?: string;
+  checkin?: { status?: string; time?: string };
+  display?: { timeLabel?: string; priceLabel?: string };
+};
+
+export type GetCheckinsResult = {
+  total: number;
+  items: CheckinItem[];
+  error?: string | null;
+  hasMore?: boolean;
+};
+
+export async function getShowCheckins(
+  showId: string,
+  page: number = 1,
+  limit: number = 20,
+  search?: string,
+  status?: string,
+  sort?: string
+): Promise<GetCheckinsResult> {
+  try {
+    const token = await AsyncStorage.getItem("userToken");
+    if (!token) {
+      Alert.alert("Lỗi", "Bạn chưa đăng nhập. Vui lòng đăng nhập để tiếp tục.");
+      return { total: 0, items: [], error: "Missing token", hasMore: false };
+    }
+
+    const params: any = { page, limit };
+    if (search) params.search = search;
+    if (status) params.status = status;
+    if (sort) params.sort = sort;
+
+    const url = `${BASE_URL}/shows/${showId}/checkins`;
+    console.log("[SHOW] Request checkins", { url, params });
+    const resp = await axios.get(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      params,
+    });
+
+    console.log("[SHOW] Response checkins", { status: resp.status, data: resp.data });
+
+    const data = resp?.data?.data || {};
+    const total = Number(data.total ?? 0);
+    const itemsRaw = data.items || [];
+    const items: CheckinItem[] = itemsRaw.map((it: any) => ({
+      id: it.id || it.ticketId,
+      ticketId: it.ticketId || it.id,
+      customer: { name: it.customer?.name || it.owner?.fullName || "", phone: it.customer?.phone || it.owner?.phone || "" },
+      ticketType: it.ticketType || { id: it.ticketType?.id, name: it.ticketType?.name || it.ticketTypeName },
+      seat: it.seat,
+      price: Number(it.price ?? 0),
+      purchaseDate: it.purchaseDate,
+      checkin: it.checkin || it.status || null,
+      display: it.display || {
+        timeLabel: it.checkin?.time ? new Date(it.checkin.time).toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", year: "numeric" }) : undefined,
+        priceLabel: typeof it.price === "number" ? it.price.toLocaleString("vi-VN") + "đ" : undefined,
+      },
+    }));
+
+    const hasMore = page * limit < total;
+    return { total, items, error: null, hasMore };
+  } catch (err: any) {
+    console.log("[SHOW] Lỗi gọi API checkins", {
+      message: err?.message,
+      status: err?.response?.status,
+      data: err?.response?.data,
+    });
+    const message = err?.response?.data?.message ?? err?.message ?? "Lỗi khi tải danh sách checkin";
+    Alert.alert("Lỗi tải danh sách check-in", message);
+    return { total: 0, items: [], error: message, hasMore: false };
   }
 }
