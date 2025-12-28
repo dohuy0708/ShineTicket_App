@@ -93,12 +93,9 @@ export async function getMyShowsService(
       };
     }
 
-    console.log(
-      "[HOME] Gọi API my-shows",
-      `${BASE_URL}/staff-permissions/my-shows`
-    );
+    console.log("[HOME] Gọi API my-shows", `${BASE_URL}/shows/listing`);
 
-    const response = await axios.get(`${BASE_URL}/staff-permissions/my-shows`, {
+    const response = await axios.get(`${BASE_URL}/shows/listing`, {
       params: { page, limit },
       headers: {
         Authorization: `Bearer ${token}`,
@@ -189,7 +186,10 @@ export async function getShowOverview(
       headers: { Authorization: `Bearer ${token}` },
     });
 
-    console.log("[SHOW] Response overview", { status: resp.status, data: resp.data });
+    console.log("[SHOW] Response overview", {
+      status: resp.status,
+      data: resp.data,
+    });
 
     const data = resp?.data?.data || {};
 
@@ -230,7 +230,8 @@ export async function getShowOverview(
       status: err?.response?.status,
       data: err?.response?.data,
     });
-    const message = err?.response?.data?.message ?? err?.message ?? "Lỗi khi tải dữ liệu";
+    const message =
+      err?.response?.data?.message ?? err?.message ?? "Lỗi khi tải dữ liệu";
     Alert.alert("Lỗi tải tổng quan", message);
     return { error: message };
   }
@@ -265,6 +266,15 @@ export async function getShowCheckins(
   sort?: string
 ): Promise<GetCheckinsResult> {
   try {
+    console.log("[SHOW] getShowCheckins called", {
+      showId,
+      page,
+      limit,
+      search,
+      status,
+      sort,
+    });
+
     const token = await AsyncStorage.getItem("userToken");
     if (!token) {
       Alert.alert("Lỗi", "Bạn chưa đăng nhập. Vui lòng đăng nhập để tiếp tục.");
@@ -276,14 +286,18 @@ export async function getShowCheckins(
     if (status) params.status = status;
     if (sort) params.sort = sort;
 
-    const url = `${BASE_URL}/shows/${showId}/checkins`;
+    const url = `${BASE_URL}/shows/${showId}/checkins?status=checkedIn`;
     console.log("[SHOW] Request checkins", { url, params });
     const resp = await axios.get(url, {
       headers: { Authorization: `Bearer ${token}` },
       params,
     });
 
-    console.log("[SHOW] Response checkins", { status: resp.status, data: resp.data });
+    console.log("[SHOW] Response checkins", {
+      status: resp.status,
+      total: resp?.data?.data?.total,
+      itemCount: (resp?.data?.data?.items || []).length,
+    });
 
     const data = resp?.data?.data || {};
     const total = Number(data.total ?? 0);
@@ -291,19 +305,44 @@ export async function getShowCheckins(
     const items: CheckinItem[] = itemsRaw.map((it: any) => ({
       id: it.id || it.ticketId,
       ticketId: it.ticketId || it.id,
-      customer: { name: it.customer?.name || it.owner?.fullName || "", phone: it.customer?.phone || it.owner?.phone || "" },
-      ticketType: it.ticketType || { id: it.ticketType?.id, name: it.ticketType?.name || it.ticketTypeName },
+      customer: {
+        name: it.customer?.name || it.owner?.fullName || "",
+        phone: it.customer?.phone || it.owner?.phone || "",
+      },
+      ticketType: it.ticketType || {
+        id: it.ticketType?.id,
+        name: it.ticketType?.name || it.ticketTypeName,
+      },
       seat: it.seat,
       price: Number(it.price ?? 0),
       purchaseDate: it.purchaseDate,
       checkin: it.checkin || it.status || null,
       display: it.display || {
-        timeLabel: it.checkin?.time ? new Date(it.checkin.time).toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", year: "numeric" }) : undefined,
-        priceLabel: typeof it.price === "number" ? it.price.toLocaleString("vi-VN") + "đ" : undefined,
+        timeLabel: it.checkin?.time
+          ? new Date(it.checkin.time).toLocaleString("vi-VN", {
+              hour: "2-digit",
+              minute: "2-digit",
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })
+          : undefined,
+        priceLabel:
+          typeof it.price === "number"
+            ? it.price.toLocaleString("vi-VN") + "đ"
+            : undefined,
       },
     }));
 
     const hasMore = page * limit < total;
+
+    console.log("[SHOW] Parsed checkins result", {
+      showId,
+      total,
+      itemCount: items.length,
+      hasMore,
+    });
+
     return { total, items, error: null, hasMore };
   } catch (err: any) {
     console.log("[SHOW] Lỗi gọi API checkins", {
@@ -311,7 +350,10 @@ export async function getShowCheckins(
       status: err?.response?.status,
       data: err?.response?.data,
     });
-    const message = err?.response?.data?.message ?? err?.message ?? "Lỗi khi tải danh sách checkin";
+    const message =
+      err?.response?.data?.message ??
+      err?.message ??
+      "Lỗi khi tải danh sách checkin";
     Alert.alert("Lỗi tải danh sách check-in", message);
     return { total: 0, items: [], error: message, hasMore: false };
   }
