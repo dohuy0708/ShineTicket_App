@@ -487,8 +487,12 @@ export default function ManageEventScreen() {
             router.push({
               pathname: `/scanner/${id}`,
               params: {
-                title: eventInfo?.show?.name ?? "",
-                time: formatDateRange(
+                showId: String(id),
+                eventName:
+                  eventInfo?.show?.eventName || eventInfo?.show?.event?.name ||
+                  eventInfo?.show?.name || "",
+                showName: eventInfo?.show?.name || eventInfo?.show?.showName || "",
+                datetime: formatDateRange(
                   eventInfo?.show?.startTime,
                   eventInfo?.show?.endTime
                 ),

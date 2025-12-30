@@ -109,7 +109,7 @@ export async function getMyShowsService(
     const events: EventItem[] = shows.map((show) => {
       const status = getEventStatus(show.startTime);
       return {
-        id: show.showId || show.id || String(Math.random()),
+        id: show.showId || show.id ,
         title: show.eventName || "",
         subTitle: show.showName || "",
         time: formatShowTime(show.startTime),

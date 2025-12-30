@@ -16,9 +16,15 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function QrScannerScreen() {
-  const { id, title, time } = useLocalSearchParams();
+  const { showId, eventName, showName, datetime,  } = useLocalSearchParams();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+
+  // Compose header values: prefer explicit params, fall back to old names or placeholders
+  const headerEvent = (eventName as string) || "Tên sự kiện";
+  const headerShow = (showName as string) || "Tên suất diễn";
+  const headerDateTime = (datetime as string) || "Ngày, giờ";
+  const headerShowId = (showId as string) || "ID suất diễn";
 
   // 2. Hook xin quyền mới
   const [permission, requestPermission] = useCameraPermissions();
@@ -94,10 +100,10 @@ export default function QrScannerScreen() {
 
             <View style={styles.headerInfo}>
               <Text style={styles.eventName} numberOfLines={1}>
-                {title || "Tên sự kiện"}
+                {headerEvent}
               </Text>
-              <Text style={styles.eventTime}>
-                {time || "Thời gian sự kiện"}
+              <Text style={styles.eventTime} numberOfLines={1}>
+                {headerShow} - {headerDateTime}
               </Text>
             </View>
 

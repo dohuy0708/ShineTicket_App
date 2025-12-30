@@ -121,10 +121,13 @@ export default function EventScreen() {
             onPress={() =>
               router.push({
                 pathname: `/scanner/${item.id}`,
-                // Truyền thêm dữ liệu qua params
+                // Truyền dữ liệu rõ ràng cho màn scanner
                 params: {
-                  title: item.title,
-                  time: item.time,
+                  showId: item.id,
+                  eventName: item.title,
+                  showName: item.subTitle ?? item.showName ?? "",
+                  datetime: item.time,
+                 
                 },
               } as any)
             }
