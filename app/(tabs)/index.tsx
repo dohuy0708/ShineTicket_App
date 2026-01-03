@@ -1,4 +1,4 @@
-import { EventStatus, useMyShows } from "@/hooks/useMyShows";
+import { MyShowsFilterStatus, useMyShows } from "@/hooks/useMyShows";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -21,53 +21,17 @@ const THEME_COLOR = "#FFBE33";
 export default function EventScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [activeTab, setActiveTab] = useState<EventStatus>("all");
+  const [activeTab, setActiveTab] = useState<MyShowsFilterStatus>("ongoing");
   const [searchText, setSearchText] = useState("");
   const { events, loading, refreshing, loadMore, refresh, loadingMore } =
-    useMyShows();
+    useMyShows(activeTab);
 
   const filteredEvents = React.useMemo(() => {
     const search = searchText.toLowerCase();
-
-    const list = events.filter((event) => {
-      if (!event.title.toLowerCase().includes(search)) return false;
-
-      if (activeTab === "all") return true;
-      return event.status === activeTab;
+    return events.filter((event) => {
+      return event.title.toLowerCase().includes(search);
     });
-
-    if (activeTab === "today") {
-      return [...list].sort((a, b) => {
-        const aTime = a.startTime ? new Date(a.startTime).getTime() : 0;
-        const bTime = b.startTime ? new Date(b.startTime).getTime() : 0;
-        return aTime - bTime;
-      });
-    }
-
-    if (activeTab === "all") {
-      // Sắp xếp theo thứ tự ưu tiên trạng thái:
-      // Hôm nay -> Sắp tới -> Đã qua
-      const getWeight = (status: EventStatus) => {
-        if (status === "today") return 0;
-        if (status === "upcoming") return 1;
-        if (status === "past") return 2;
-        return 3;
-      };
-
-      return [...list].sort((a, b) => {
-        const wa = getWeight(a.status);
-        const wb = getWeight(b.status);
-        if (wa !== wb) return wa - wb;
-
-        // Nếu cùng trạng thái thì sắp xếp theo thời gian bắt đầu
-        const aTime = a.startTime ? new Date(a.startTime).getTime() : 0;
-        const bTime = b.startTime ? new Date(b.startTime).getTime() : 0;
-        return aTime - bTime;
-      });
-    }
-
-    return list;
-  }, [events, activeTab, searchText]);
+  }, [events, searchText]);
 
   const renderEventItem = ({ item }: { item: any }) => {
     const isCheckInEnabled = item.status === "today";
@@ -127,7 +91,6 @@ export default function EventScreen() {
                   eventName: item.title,
                   showName: item.subTitle ?? item.showName ?? "",
                   datetime: item.time,
-                 
                 },
               } as any)
             }
@@ -167,7 +130,7 @@ export default function EventScreen() {
           resizeMode="contain"
         />
         <View style={styles.headerTextContainer}>
-          <Text style={styles.headerTitle}>Organizer Center</Text>
+          <Text style={styles.headerTitle}>ShineTicket</Text>
         </View>
       </View>
 
@@ -183,40 +146,20 @@ export default function EventScreen() {
           />
         </View>
 
-        {/* Hàng trạng thái nằm dưới */}
+        {/* Hàng trạng thái nằm dưới - 3 tab: Hôm nay, Sắp tới, Đã qua */}
         <View style={styles.tabButtons}>
-          {/* Tất cả */}
-          <TouchableOpacity
-            style={[
-              styles.filterBtn,
-              activeTab === "all" && styles.activeFilterBtn,
-            ]}
-            onPress={() => setActiveTab("all")}
-          >
-            <Text
-              style={[
-                styles.filterText,
-                activeTab === "all" && styles.activeFilterText,
-              ]}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              Tất cả
-            </Text>
-          </TouchableOpacity>
-
           {/* Hôm nay */}
           <TouchableOpacity
             style={[
               styles.filterBtn,
-              activeTab === "today" && styles.activeFilterBtn,
+              activeTab === "ongoing" && styles.activeFilterBtn,
             ]}
-            onPress={() => setActiveTab("today")}
+            onPress={() => setActiveTab("ongoing")}
           >
             <Text
               style={[
                 styles.filterText,
-                activeTab === "today" && styles.activeFilterText,
+                activeTab === "ongoing" && styles.activeFilterText,
               ]}
               numberOfLines={1}
               ellipsizeMode="tail"
@@ -229,14 +172,14 @@ export default function EventScreen() {
           <TouchableOpacity
             style={[
               styles.filterBtn,
-              activeTab === "upcoming" && styles.activeFilterBtn,
+              activeTab === "pending" && styles.activeFilterBtn,
             ]}
-            onPress={() => setActiveTab("upcoming")}
+            onPress={() => setActiveTab("pending")}
           >
             <Text
               style={[
                 styles.filterText,
-                activeTab === "upcoming" && styles.activeFilterText,
+                activeTab === "pending" && styles.activeFilterText,
               ]}
               numberOfLines={1}
               ellipsizeMode="tail"
@@ -249,14 +192,14 @@ export default function EventScreen() {
           <TouchableOpacity
             style={[
               styles.filterBtn,
-              activeTab === "past" && styles.activeFilterBtn,
+              activeTab === "completed" && styles.activeFilterBtn,
             ]}
-            onPress={() => setActiveTab("past")}
+            onPress={() => setActiveTab("completed")}
           >
             <Text
               style={[
                 styles.filterText,
-                activeTab === "past" && styles.activeFilterText,
+                activeTab === "completed" && styles.activeFilterText,
               ]}
               numberOfLines={1}
               ellipsizeMode="tail"

@@ -362,7 +362,9 @@ export default function ManageEventScreen() {
         ) : (
           <FlatList
             data={filteredList}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item, index) =>
+              item.id || item.ticketId || item.customer?.phone || `${index}`
+            }
             contentContainerStyle={{ paddingBottom: 100, flexGrow: 1 }}
             renderItem={({ item }) => (
               <View style={styles.checkInItem}>
@@ -489,9 +491,12 @@ export default function ManageEventScreen() {
               params: {
                 showId: String(id),
                 eventName:
-                  eventInfo?.show?.eventName || eventInfo?.show?.event?.name ||
-                  eventInfo?.show?.name || "",
-                showName: eventInfo?.show?.name || eventInfo?.show?.showName || "",
+                  eventInfo?.show?.eventName ||
+                  eventInfo?.show?.event?.name ||
+                  eventInfo?.show?.name ||
+                  "",
+                showName:
+                  eventInfo?.show?.name || eventInfo?.show?.showName || "",
                 datetime: formatDateRange(
                   eventInfo?.show?.startTime,
                   eventInfo?.show?.endTime

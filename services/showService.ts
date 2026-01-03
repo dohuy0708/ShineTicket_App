@@ -76,7 +76,8 @@ export type MyShowsResult = {
 // Service chính để lấy dữ liệu "my-shows" (hỗ trợ phân trang)
 export async function getMyShowsService(
   page: number = 1,
-  limit: number = 6
+  limit: number = 6,
+  status?: "ongoing" | "pending" | "completed"
 ): Promise<MyShowsResult> {
   try {
     const token = await AsyncStorage.getItem("userToken");
@@ -93,10 +94,17 @@ export async function getMyShowsService(
       };
     }
 
-    console.log("[HOME] Gọi API my-shows", `${BASE_URL}/shows/listing`);
+    console.log("[HOME] Gọi API my-shows", `${BASE_URL}/shows/listing`, {
+      page,
+      limit,
+      status,
+    });
+
+    const params: any = { page, limit };
+    if (status) params.status = status;
 
     const response = await axios.get(`${BASE_URL}/shows/listing`, {
-      params: { page, limit },
+      params,
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -109,7 +117,7 @@ export async function getMyShowsService(
     const events: EventItem[] = shows.map((show) => {
       const status = getEventStatus(show.startTime);
       return {
-        id: show.showId || show.id ,
+        id: show.showId || show.id,
         title: show.eventName || "",
         subTitle: show.showName || "",
         time: formatShowTime(show.startTime),
@@ -302,37 +310,78 @@ export async function getShowCheckins(
     const data = resp?.data?.data || {};
     const total = Number(data.total ?? 0);
     const itemsRaw = data.items || [];
-    const items: CheckinItem[] = itemsRaw.map((it: any) => ({
-      id: it.id || it.ticketId,
-      ticketId: it.ticketId || it.id,
-      customer: {
-        name: it.customer?.name || it.owner?.fullName || "",
-        phone: it.customer?.phone || it.owner?.phone || "",
-      },
-      ticketType: it.ticketType || {
-        id: it.ticketType?.id,
-        name: it.ticketType?.name || it.ticketTypeName,
-      },
-      seat: it.seat,
-      price: Number(it.price ?? 0),
-      purchaseDate: it.purchaseDate,
-      checkin: it.checkin || it.status || null,
-      display: it.display || {
-        timeLabel: it.checkin?.time
-          ? new Date(it.checkin.time).toLocaleString("vi-VN", {
-              hour: "2-digit",
-              minute: "2-digit",
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            })
-          : undefined,
-        priceLabel:
-          typeof it.price === "number"
-            ? it.price.toLocaleString("vi-VN") + "đ"
-            : undefined,
-      },
-    }));
+
+    const items: CheckinItem[] = itemsRaw.map((it: any, index: number) => {
+      // Gộp các trường customer từ nhiều dạng response khác nhau
+      const customer = {
+        name: it.customer?.name || it.owner?.fullName || it.name || "",
+        phone: it.customer?.phone || it.owner?.phone || it.phone || "",
+      };
+
+      // ticketType có thể là string ("VIP") hoặc object
+      let ticketTypeObj: { id?: string; name?: string } | undefined;
+      if (typeof it.ticketType === "string") {
+        ticketTypeObj = { name: it.ticketType };
+      } else {
+        ticketTypeObj = {
+          id: it.ticketType?.id,
+          name: it.ticketType?.name || it.ticketTypeName,
+        };
+      }
+
+      // Thông tin checkin: ưu tiên object, fallback từ checkInAt
+      const checkinInfo =
+        it.checkin && typeof it.checkin === "object"
+          ? it.checkin
+          : it.status && typeof it.status === "object"
+          ? it.status
+          : it.checkInAt
+          ? { status: "checkedIn", time: it.checkInAt }
+          : null;
+
+      const priceNumber = Number(it.price ?? it.ticketPrice ?? 0);
+
+      const timeLabel = checkinInfo?.time
+        ? new Date(checkinInfo.time).toLocaleString("vi-VN", {
+            hour: "2-digit",
+            minute: "2-digit",
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          })
+        : undefined;
+
+      const priceLabel =
+        priceNumber > 0 ? priceNumber.toLocaleString("vi-VN") + "đ" : undefined;
+
+      const display =
+        it.display ||
+        ({
+          timeLabel,
+          priceLabel,
+        } as CheckinItem["display"]);
+
+      const id =
+        it.id ||
+        it._id ||
+        it.ticketId ||
+        it.ticketCode ||
+        it.code ||
+        customer.phone ||
+        `idx-${index}`;
+
+      return {
+        id,
+        ticketId: it.ticketId || it._id || it.id || id,
+        customer,
+        ticketType: ticketTypeObj,
+        seat: it.seat,
+        price: priceNumber,
+        purchaseDate: it.purchaseDate || it.purchasedAt,
+        checkin: checkinInfo,
+        display,
+      };
+    });
 
     const hasMore = page * limit < total;
 
@@ -356,5 +405,66 @@ export async function getShowCheckins(
       "Lỗi khi tải danh sách checkin";
     Alert.alert("Lỗi tải danh sách check-in", message);
     return { total: 0, items: [], error: message, hasMore: false };
+  }
+}
+
+// --- New: Verify ticket check-in via QR ---
+export type VerifyCheckinPayload = {
+  ticketId: string;
+  walletAddress: string;
+  timestamp: string | number;
+  signature: string;
+  showId?: string;
+};
+
+export type VerifyCheckinResult = {
+  success: boolean;
+  data?: any;
+  message?: string;
+};
+
+export async function verifyTicketCheckin(
+  payload: VerifyCheckinPayload
+): Promise<VerifyCheckinResult> {
+  try {
+    const token = await AsyncStorage.getItem("userToken");
+    if (!token) {
+      Alert.alert("Lỗi", "Bạn chưa đăng nhập. Vui lòng đăng nhập để tiếp tục.");
+      return { success: false, message: "Missing token" };
+    }
+
+    const url = `${BASE_URL}/check-in/verify`;
+    console.log("[CHECKIN] Request verify", { url, payload });
+
+    const resp = await axios.post(url, payload, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    console.log("[CHECKIN] Response verify", {
+      status: resp.status,
+      data: resp.data,
+    });
+
+    const body: any = resp?.data ?? {};
+    const success: boolean =
+      typeof body.success === "boolean" ? body.success : true;
+    const data = body.data; // BE trả data chuẩn trong body.data
+    const message: string | undefined = body.message;
+
+    return { success, data, message };
+  } catch (err: any) {
+    console.log("[CHECKIN] Lỗi verify", {
+      message: err?.message,
+      status: err?.response?.status,
+      data: err?.response?.data,
+    });
+
+    const message: string =
+      err?.response?.data?.message ??
+      err?.message ??
+      "Lỗi khi xác thực check-in";
+
+    Alert.alert("Check-in thất bại", message);
+    return { success: false, message };
   }
 }

@@ -2,7 +2,9 @@ import type { EventItem } from "@/services/showService";
 import { getMyShowsService } from "@/services/showService";
 import { useEffect, useState } from "react";
 
-export function useMyShows() {
+export type MyShowsFilterStatus = "ongoing" | "pending" | "completed";
+
+export function useMyShows(status: MyShowsFilterStatus = "ongoing") {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -24,7 +26,7 @@ export function useMyShows() {
           events: fetchedEvents,
           error: serviceError,
           hasMore,
-        } = await getMyShowsService(1, 6);
+        } = await getMyShowsService(1, 6, status);
 
         if (!isMounted) return;
         setEvents(fetchedEvents);
@@ -45,7 +47,7 @@ export function useMyShows() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [status]);
 
   // Kéo để refresh
   const refresh = async () => {
@@ -59,7 +61,7 @@ export function useMyShows() {
         events: fetchedEvents,
         error: serviceError,
         hasMore,
-      } = await getMyShowsService(1, 6);
+      } = await getMyShowsService(1, 6, status);
 
       setEvents(fetchedEvents);
       setError(serviceError ?? null);
@@ -81,7 +83,7 @@ export function useMyShows() {
 
     try {
       const { events: fetchedEvents, hasMore: nextHasMore } =
-        await getMyShowsService(nextPage, 6);
+        await getMyShowsService(nextPage, 6, status);
 
       setEvents((prev) => [...prev, ...fetchedEvents]);
       setPage(nextPage);

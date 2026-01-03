@@ -1,6 +1,7 @@
 // File: app/scanner/[id].tsx
 import { Ionicons } from "@expo/vector-icons";
 // 1. IMPORT CHUẨN CHO EXPO CAMERA V17+
+import { verifyTicketCheckin } from "@/services/showService";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -16,7 +17,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function QrScannerScreen() {
-  const { showId, eventName, showName, datetime,  } = useLocalSearchParams();
+  const { showId, eventName, showName, datetime } = useLocalSearchParams();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -55,20 +56,120 @@ export default function QrScannerScreen() {
     // Chặn quét liên tục
     if (scanned || verifying) return;
     setScanned(true);
+    setVerifying(true);
 
-    // --- LOGIC XỬ LÝ API CỦA BẠN (GIỮ NGUYÊN) ---
-    console.log("Đã quét:", data);
-    
-    // Demo flow:
-    // 1. Parse JSON
-    // 2. Call API verify
-    // ... (Paste lại logic API verify của bạn vào đây nếu cần) ...
+    console.log("[SCANNER] Đã quét QR:", data);
 
-    // Tạm thời alert để test UI trước:
-    Alert.alert("Kết quả quét", data, [
-      { text: "Quét tiếp", onPress: () => setScanned(false) },
-      { text: "Thoát", onPress: () => router.back() }
-    ]);
+    try {
+      // 1. Parse JSON từ QR
+      let payload: any;
+      try {
+        payload = JSON.parse(data);
+      } catch (e) {
+        Alert.alert(
+          "Mã QR không hợp lệ",
+          "Không đọc được nội dung JSON từ mã QR.",
+          [{ text: "Thử lại", onPress: () => setScanned(false) }]
+        );
+        return;
+      }
+
+      // 2. Kiểm tra showId của vé có trùng show đang check-in không
+      const qrShowId: string | undefined =
+        payload.showId || payload.showID || payload.show?.id;
+
+      if (!qrShowId) {
+        Alert.alert(
+          "Mã QR không hợp lệ",
+          "Không tìm thấy thông tin suất diễn trong vé.",
+          [{ text: "Thử lại", onPress: () => setScanned(false) }]
+        );
+        return;
+      }
+
+      if (headerShowId && qrShowId !== headerShowId) {
+        Alert.alert(
+          "Sai suất diễn",
+          "Vé này không thuộc suất diễn bạn đang check-in.",
+          [{ text: "Đóng", onPress: () => setScanned(false) }]
+        );
+        return;
+      }
+
+      // 3. Kiểm tra payload bắt buộc để gọi API
+      const { ticketId, walletAddress, timestamp, signature } = payload;
+
+      // QR hiện trả signature dạng { signature: "0x..." }, BE cần chuỗi
+      const signatureValue: string | undefined =
+        typeof signature === "string" ? signature : signature?.signature;
+
+      if (!ticketId || !walletAddress || !timestamp || !signatureValue) {
+        Alert.alert(
+          "Dữ liệu vé không hợp lệ",
+          "Thiếu ticketId, walletAddress, timestamp hoặc signature.",
+          [{ text: "Thử lại", onPress: () => setScanned(false) }]
+        );
+        return;
+      }
+
+      // 4. Gọi API verify check-in
+      const result = await verifyTicketCheckin({
+        ticketId,
+        walletAddress,
+        timestamp,
+        signature: signatureValue,
+        showId: qrShowId,
+      });
+
+      if (!result.success) {
+        Alert.alert(
+          "Check-in thất bại",
+          result.message || "Không thể xác thực vé. Vui lòng thử lại.",
+          [{ text: "Thử lại", onPress: () => setScanned(false) }]
+        );
+        return;
+      }
+
+      const info: any = result.data || {};
+
+      // Lấy thông tin theo đúng response từ BE
+      const ownerName: string =
+        info.ownerName || info.owner?.fullName || "Khách hàng";
+
+      const ticketTypeName: string =
+        info.ticketTypeName || info.ticketType?.name || "Vé";
+
+      const eventNameFromApi: string = info.eventName || headerEvent;
+      const showNameFromApi: string = info.showName || headerShow;
+      const status: string = info.status || "checkedIn";
+      const checkinAt: string | undefined = info.checkinAt;
+
+      const timeLabel = checkinAt
+        ? new Date(checkinAt).toLocaleString("vi-VN", {
+            hour: "2-digit",
+            minute: "2-digit",
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          })
+        : undefined;
+
+      let message = `Chủ vé: ${ownerName}`;
+      message += `\nLoại vé: ${ticketTypeName}`;
+      message += `\nSự kiện: ${eventNameFromApi}`;
+      message += `\nSuất diễn: ${showNameFromApi}`;
+      message += `\nTrạng thái: ${status}`;
+      if (timeLabel) {
+        message += `\nCheck-in lúc: ${timeLabel}`;
+      }
+
+      Alert.alert("Check-in thành công", message, [
+        { text: "Quét tiếp", onPress: () => setScanned(false) },
+        { text: "Hoàn tất", onPress: () => router.back() },
+      ]);
+    } finally {
+      setVerifying(false);
+    }
   };
 
   return (
