@@ -16,7 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // --- MÃ MÀU CHỦ ĐỀ MỚI ---
-const THEME_COLOR = "#FFBE33";
+const THEME_COLOR = "#0d9488";
 
 export default function EventScreen() {
   const router = useRouter();
@@ -98,7 +98,7 @@ export default function EventScreen() {
             <Ionicons
               name="qr-code-outline"
               size={18}
-              color="#333" // Đổi màu icon sang đen cho nổi trên nền vàng
+              color="#fff" // Đổi màu icon sang trắng cho nổi trên nền teal
               style={{ marginRight: 4 }}
             />
             <Text
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
   },
   // --- CẬP NHẬT MÀU NỀN ---
   activeFilterBtn: {
-    backgroundColor: THEME_COLOR, // Màu vàng #FFBE33
+    backgroundColor: THEME_COLOR, // Màu teal #0d9488
   },
   filterText: {
     fontSize: 12,
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
   },
   // --- CẬP NHẬT MÀU CHỮ ---
   activeFilterText: {
-    color: "#333", // Đổi sang màu đen cho dễ đọc trên nền vàng
+    color: "#fff", // Đổi sang màu trắng cho dễ đọc trên nền teal
     fontWeight: "700",
   },
   listContent: {
@@ -409,10 +409,10 @@ const styles = StyleSheet.create({
   },
   // --- CẬP NHẬT NÚT CHECK-IN ---
   checkInBtn: {
-    backgroundColor: THEME_COLOR, // Màu vàng #FFBE33
+    backgroundColor: THEME_COLOR, // Màu teal #0d9488
   },
   checkInBtnText: {
-    color: "#333", // Màu đen cho dễ đọc
+    color: "#fff", // Màu trắng cho dễ đọc
     fontWeight: "bold",
     fontSize: 14,
   },

@@ -37,7 +37,7 @@ export default function Index() {
   // Chỉ cần hiển thị loading, việc chuyển hướng đã xử lý trong hàm trên
   return (
     <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-      <ActivityIndicator size="large" color="#FFBE33" />
+      <ActivityIndicator size="large" color="#0d9488" />
     </View>
   );
 }

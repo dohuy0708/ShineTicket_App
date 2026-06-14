@@ -9,7 +9,7 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
 // ĐỔI MÀU Ở ĐÂY
-        tabBarActiveTintColor: '#FFBE33', // <--- Màu vàng
+        tabBarActiveTintColor: '#0d9488', // <--- Màu teal
         tabBarInactiveTintColor: '#999',
 
         // --- CẤU HÌNH MỚI TẠI ĐÂY ---

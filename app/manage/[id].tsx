@@ -166,7 +166,7 @@ export default function ManageEventScreen() {
   const pieData = [
     {
       value: checkedInCount,
-      color: "#FFBE33",
+      color: "#0d9488",
     },
     {
       value: notCheckedInCount,
@@ -189,7 +189,7 @@ export default function ManageEventScreen() {
             height: 12,
             width: 12,
             borderRadius: 6,
-            backgroundColor: "#FFBE33",
+            backgroundColor: "#0d9488",
             marginRight: 8,
           }}
         />
@@ -230,7 +230,7 @@ export default function ManageEventScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#FFBE33" />
+            <ActivityIndicator size="large" color="#0d9488" />
             <Text style={styles.loadingText}>
               Đang tải dữ liệu tổng quan...
             </Text>
@@ -356,7 +356,7 @@ export default function ManageEventScreen() {
 
         {loadingCheckins && !hasLoadedCheckins ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#FFBE33" />
+            <ActivityIndicator size="large" color="#0d9488" />
             <Text style={styles.loadingText}>Đang tải dữ liệu check-in...</Text>
           </View>
         ) : (
@@ -508,7 +508,7 @@ export default function ManageEventScreen() {
           <Ionicons
             name="qr-code-outline"
             size={24}
-            color="#333"
+            color="#fff"
             style={{ marginRight: 8 }}
           />
           <Text style={styles.floatingBtnText}>CHECK-IN</Text>
@@ -565,9 +565,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: "transparent",
   },
-  activeTab: { borderBottomColor: "#FFBE33" },
+  activeTab: { borderBottomColor: "#0d9488" },
   tabText: { fontSize: 15, fontWeight: "600", color: "#999" },
-  activeTabText: { color: "#FFBE33", fontWeight: "bold" },
+  activeTabText: { color: "#0d9488", fontWeight: "bold" },
   tabContent: { flex: 1, padding: 12 },
 
   // Overview Styles
@@ -620,7 +620,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#eee",
     borderRadius: 3,
   },
-  progressBarFill: { height: 6, backgroundColor: "#FFBE33", borderRadius: 3 },
+  progressBarFill: { height: 6, backgroundColor: "#0d9488", borderRadius: 3 },
 
   // Check-in Tab
   searchContainer: {
@@ -714,7 +714,7 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
   floatingBtn: {
-    backgroundColor: "#FFBE33",
+    backgroundColor: "#0d9488",
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
@@ -726,5 +726,5 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-  floatingBtnText: { fontSize: 16, fontWeight: "bold", color: "#333" },
+  floatingBtnText: { fontSize: 16, fontWeight: "bold", color: "#fff" },
 });

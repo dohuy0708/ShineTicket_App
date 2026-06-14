@@ -44,7 +44,7 @@ export default function QrScannerScreen() {
           onPress={requestPermission}
           style={styles.btnPermission}
         >
-          <Text style={{ color: "#333", fontWeight: "bold" }}>
+          <Text style={{ color: "#fff", fontWeight: "bold" }}>
             Cấp quyền ngay
           </Text>
         </TouchableOpacity>
@@ -238,7 +238,7 @@ export default function QrScannerScreen() {
                   marginTop: 12,
                 }}
               >
-                <ActivityIndicator color="#FFBE33" />
+                <ActivityIndicator color="#0d9488" />
                 <Text style={{ color: "#fff", marginLeft: 8 }}>
                   Đang kiểm tra vé...
                 </Text>
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#000",
   },
   btnPermission: {
-    backgroundColor: "#FFBE33",
+    backgroundColor: "#0d9488",
     padding: 12,
     borderRadius: 8,
   },
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   eventName: {
-    color: "#FFBE33",
+    color: "#0d9488",
     fontSize: 18,
     fontWeight: "bold",
     textAlign: "center",
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: 30,
     height: 30,
-    borderColor: "#FFBE33",
+    borderColor: "#0d9488",
     borderWidth: 4,
   },
   topLeft: { top: -2, left: -2, borderRightWidth: 0, borderBottomWidth: 0 },

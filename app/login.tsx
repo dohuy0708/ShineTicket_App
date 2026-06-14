@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   button: {
-    backgroundColor: "#FFBE33",
+    backgroundColor: "#0d9488",
     height: 50,
     borderRadius: 8,
     justifyContent: "center",
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 255, 255, 0.4)",
     borderRadius: 8,
   },
-  buttonText: { color: "#000", fontSize: 18, fontWeight: "bold" },
+  buttonText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
   linkContainer: { marginTop: 20, alignItems: "center" },
   linkText: { color: "#007AFF", fontSize: 14 },
 });
