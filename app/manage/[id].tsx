@@ -391,7 +391,7 @@ export default function ManageEventScreen() {
                     Mua ngày {formatPurchaseDate(item.purchaseDate)} -{" "}
                     {item.display?.priceLabel ||
                       (item.price
-                        ? item.price.toLocaleString("vi-VN") + "đ"
+                        ? item.price.toLocaleString("vi-VN") + "USDT"
                         : "")}
                   </Text>
                 </View>
